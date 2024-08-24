@@ -3,8 +3,8 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 # Importando os arquivos CSV
-file_path_01 = 'C:/Users/hneto/OneDrive/Documentos/DataScientist/Notebooks/Sprint 7/moved_project_sql_result_01.csv'
-file_path_04 = 'C:/Users/hneto/OneDrive/Documentos/DataScientist/Notebooks/Sprint 7/moved_project_sql_result_04.csv'
+file_path_01 = '/Users/hneto/OneDrive/Documentos/DataScientist/Notebooks/Sprint 7/moved_project_sql_result_01.csv'
+file_path_04 = '/Users/hneto/OneDrive/Documentos/DataScientist/Notebooks/Sprint 7/moved_project_sql_result_04.csv'
 
 df_01 = pd.read_csv(file_path_01)
 df_04 = pd.read_csv(file_path_04)
