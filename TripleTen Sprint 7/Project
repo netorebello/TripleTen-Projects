@@ -1,0 +1,98 @@
+from scipy import stats
+import matplotlib.pyplot as plt
+import pandas as pd
+
+# Importando os arquivos CSV
+file_path_01 = 'C:/Users/hneto/OneDrive/Documentos/DataScientist/Notebooks/Sprint 7/moved_project_sql_result_01.csv'
+file_path_04 = 'C:/Users/hneto/OneDrive/Documentos/DataScientist/Notebooks/Sprint 7/moved_project_sql_result_04.csv'
+
+df_01 = pd.read_csv(file_path_01)
+df_04 = pd.read_csv(file_path_04)
+
+# Exibindo os primeiros registros de cada DataFrame para entender a estrutura dos dados
+print(df_01.head())
+print(df_04.head())
+
+# Verificando os tipos de dados no primeiro DataFrame
+print(df_01.info())
+
+# Verificando os tipos de dados no segundo DataFrame
+print(df_04.info())
+
+# Ordenando os bairros por número médio de corridas e selecionando os 10 principais
+top_10_neighborhoods = df_04.sort_values(
+    by='average_trips', ascending=False).head(10)
+
+# Exibindo os 10 principais bairros
+print(top_10_neighborhoods)
+
+
+# Ordenar o DataFrame por trips_amount em ordem decrescente
+df_01_sorted = df_01.sort_values(by='trips_amount', ascending=False)
+
+# Selecionar as 10 principais empresas com maior número de corridas
+top_10_companies = df_01_sorted.head(10)
+
+# Criar o gráfico de barras
+plt.figure(figsize=(10, 6))
+bars = plt.bar(top_10_companies['company_name'],
+               top_10_companies['trips_amount'], color='skyblue')
+
+# Adicionar rótulos de dados nas barras
+for bar in bars:
+    yval = bar.get_height()
+    plt.text(bar.get_x() + bar.get_width()/2, yval +
+             0.05, int(yval), ha='center', va='bottom')
+
+# Rotacionar as labels do eixo X para evitar sobreposição
+plt.xticks(rotation=45, ha='right')
+
+# Adicionar títulos e labels aos eixos
+plt.title('Número de Corridas por Empresa de Táxi (15 a 16 de Novembro de 2017)')
+plt.xlabel('Empresa de Táxi')
+plt.ylabel('Número de Corridas')
+
+# Mostrar o gráfico
+plt.show()
+
+# Gráfico de barras para os 10 principais bairros por número de corridas
+plt.figure(figsize=(10, 6))
+plt.barh(top_10_neighborhoods['dropoff_location_name'],
+         top_10_neighborhoods['average_trips'], color='orange')
+plt.xlabel('Average Number of Trips')
+plt.ylabel('Neighborhoods')
+plt.title('Top 10 Neighborhoods by Average Number of Trips (November 2017)')
+plt.gca().invert_yaxis()
+plt.show()
+
+# Carregando o arquivo CSV com dados das corridas do Loop para o Aeroporto O'Hare
+file_path_07 = '/Users/hneto/OneDrive/Documentos/DataScientist/Notebooks/Sprint 7/moved_project_sql_result_07.csv'
+df_07 = pd.read_csv(file_path_07)
+
+# Exibindo os primeiros registros do DataFrame para garantir que os dados foram carregados corretamente
+print(df_07.head())
+
+
+# Separando as durações de corridas em sábados com tempo "Bad" e "Good"
+bad_weather_durations = df_07[df_07['weather_conditions']
+                              == 'Bad']['duration_seconds']
+good_weather_durations = df_07[df_07['weather_conditions']
+                               == 'Good']['duration_seconds']
+
+# Realizando o teste t
+t_stat, p_value = stats.ttest_ind(
+    bad_weather_durations, good_weather_durations, equal_var=False)
+
+# Definindo o nível de significância (alfa)
+alpha = 0.05
+
+# Teste de hipóteses
+if p_value < alpha:
+    print(f'Rejeitamos a hipótese nula. p-value = {p_value:.4f}')
+else:
+    print(f'Não podemos rejeitar a hipótese nula. p-value = {p_value:.4f}')
+
+# A hipótese nula (H0) é a suposição inicial de que não há diferença significativa ou efeito. No contexto desse problema, significa que o clima não teria impacto na duração média das corridas do Loop para o Aeroporto O'Hare em sábados.
+# A hipótese alternativa (H1) propõe que existe uma diferença significativa. Nesse caso, significa que o clima, especificamente se é um dia chuvoso, tem um impacto na duração média das corridas.
+# Se o p-valor calculado for menor que o nível de significância (0.05), rejeitamos a hipótese nula, aceitando a hipótese alternativa de que a duração média das corridas do Loop para o Aeroporto Internacional O'Hare muda nos sábados chuvosos.
+# Se o p-valor for maior que 0.05, não rejeitamos a hipótese nula, o que significa que não encontramos evidências suficientes para afirmar que a duração das corridas muda em função do clima chuvoso.
