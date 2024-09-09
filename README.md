@@ -1,5 +1,5 @@
 <h1 align="center">Hi 👋, I'm Neto Rebello</h1>
-<h3 align="center">A Junior Data Scientist seeking for great opportunities.</h3>
+<h3 align="center">A Data Scientist seeking for great opportunities.</h3>
 
 - 🔭 I’m currently studying on [TripleTen](www.tripleten.com)
 
