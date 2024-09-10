@@ -1,0 +1,179 @@
+# Importação das bibliotecas
+from sklearn.model_selection import cross_val_score
+from sklearn.model_selection import RandomizedSearchCV
+from sklearn.utils import resample
+import pandas as pd
+import numpy as np
+from sklearn.model_selection import train_test_split, cross_val_score
+from sklearn.preprocessing import StandardScaler
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import f1_score, roc_auc_score
+
+# Carregar os dados
+df = pd.read_csv(
+    '/Users/hneto/OneDrive/Documentos/DataScientist/Notebooks/Sprint 9/Churn.csv')
+
+# Verificar informações gerais dos dados
+print(df.info())
+
+# Visualizar as primeiras linhas
+df.head()
+
+# Remover colunas irrelevantes
+df = df.drop(columns=['RowNumber', 'CustomerId', 'Surname'])
+
+# Codificar variáveis categóricas (Geography e Gender)
+df = pd.get_dummies(df, drop_first=True)
+
+# Verificar valores ausentes e substituí-los por um valor indicativo (-1)
+df.fillna(-1, inplace=True)
+
+# Verificar e substituir valores infinitos por -1
+df.replace([np.inf, -np.inf], -1, inplace=True)
+
+# Separar recursos (X) e alvo (y)
+X = df.drop(columns=['Exited'])
+y = df['Exited']
+
+# Dividir os dados em treino (80%) e teste (20%)
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42, stratify=y)
+
+# Escalar os dados
+scaler = StandardScaler()
+X_train_scaled = scaler.fit_transform(X_train)
+X_test_scaled = scaler.transform(X_test)
+
+# Verificar o equilíbrio das classes
+print(y_train.value_counts(normalize=True))
+
+# Treinar um modelo Random Forest inicial sem ajuste de classes
+model_rf = RandomForestClassifier(random_state=42)
+model_rf.fit(X_train_scaled, y_train)
+
+# Fazer previsões e calcular o F1-score e AUC-ROC
+y_pred = model_rf.predict(X_test_scaled)
+f1 = f1_score(y_test, y_pred)
+roc_auc = roc_auc_score(y_test, model_rf.predict_proba(X_test_scaled)[:, 1])
+
+print(f'F1-score inicial: {f1}')
+print(f'AUC-ROC inicial: {roc_auc}')
+
+# Ajustar pesos para lidar com o desequilíbrio de classes
+model_rf_balanced = RandomForestClassifier(
+    class_weight='balanced', random_state=42)
+
+# Validação cruzada (5 dobras) para verificar a performance
+cv_scores = cross_val_score(
+    model_rf_balanced, X_train_scaled, y_train, cv=5, scoring='f1')
+
+print(f'F1-score médio com class_weight: {cv_scores.mean()}')
+
+# Treinar o modelo com o conjunto de treinamento completo
+model_rf_balanced.fit(X_train_scaled, y_train)
+
+# Fazer previsões no conjunto de teste
+y_pred_balanced = model_rf_balanced.predict(X_test_scaled)
+
+# Avaliar o modelo ajustado
+f1_balanced = f1_score(y_test, y_pred_balanced)
+roc_auc_balanced = roc_auc_score(
+    y_test, model_rf_balanced.predict_proba(X_test_scaled)[:, 1])
+
+print(f'F1-score com class_weight: {f1_balanced}')
+print(f'AUC-ROC com class_weight: {roc_auc_balanced}')
+
+# Realizar undersampling manualmente
+
+# Combinar X_train e y_train para realizar undersampling
+train_data = pd.concat([X_train, y_train], axis=1)
+
+# Separar classes majoritárias e minoritárias
+majority_class = train_data[train_data['Exited'] == 0]
+minority_class = train_data[train_data['Exited'] == 1]
+
+# Reduzir a classe majoritária
+majority_downsampled = resample(majority_class,
+                                replace=False,    # sem reposição
+                                # igualar ao número da classe minoritária
+                                n_samples=len(minority_class),
+                                random_state=42)
+
+# Combinar novamente as classes
+undersampled_data = pd.concat([majority_downsampled, minority_class])
+
+# Separar X e y novamente
+X_train_under = undersampled_data.drop(columns=['Exited'])
+y_train_under = undersampled_data['Exited']
+
+# Escalar os dados novamente
+X_train_under_scaled = scaler.fit_transform(X_train_under)
+
+# Treinar o modelo com undersampling
+model_rf_under = RandomForestClassifier(random_state=42)
+model_rf_under.fit(X_train_under_scaled, y_train_under)
+
+# Fazer previsões no conjunto de teste
+y_pred_under = model_rf_under.predict(X_test_scaled)
+
+# Avaliar o modelo com undersampling
+f1_under = f1_score(y_test, y_pred_under)
+roc_auc_under = roc_auc_score(
+    y_test, model_rf_under.predict_proba(X_test_scaled)[:, 1])
+
+print(f'F1-score com undersampling: {f1_under}')
+print(f'AUC-ROC com undersampling: {roc_auc_under}')
+
+print(f'F1-score inicial: {f1}')
+print(f'F1-score com class_weight: {f1_balanced}')
+print(f'F1-score com undersampling: {f1_under}')
+
+print(f'AUC-ROC inicial: {roc_auc}')
+print(f'AUC-ROC com class_weight: {roc_auc_balanced}')
+print(f'AUC-ROC com undersampling: {roc_auc_under}')
+
+
+# Definir a grade de hiperparâmetros
+param_dist = {
+    'n_estimators': [100, 200, 300, 400, 500],
+    'max_depth': [None, 10, 20, 30],
+    'min_samples_split': [2, 5, 10],
+    'min_samples_leaf': [1, 2, 4],
+    'bootstrap': [True, False]
+}
+
+# Criar o modelo Random Forest com ajuste de pesos
+model_rf_tuned = RandomForestClassifier(
+    class_weight='balanced', random_state=42)
+
+# Definir a busca aleatória
+random_search = RandomizedSearchCV(
+    estimator=model_rf_tuned, param_distributions=param_dist, n_iter=10, cv=3, scoring='f1', random_state=42)
+
+# Treinar o modelo com os dados de treino
+random_search.fit(X_train_scaled, y_train)
+
+# Mostrar os melhores parâmetros
+print(f'Melhores parâmetros: {random_search.best_params_}')
+
+# Fazer previsões no conjunto de teste com o melhor modelo
+best_rf_model = random_search.best_estimator_
+y_pred_best_rf = best_rf_model.predict(X_test_scaled)
+
+# Avaliar o modelo
+f1_best_rf = f1_score(y_test, y_pred_best_rf)
+roc_auc_best_rf = roc_auc_score(
+    y_test, best_rf_model.predict_proba(X_test_scaled)[:, 1])
+
+print(f'F1-score com RandomizedSearchCV: {f1_best_rf}')
+print(f'AUC-ROC com RandomizedSearchCV: {roc_auc_best_rf}')
+
+
+# Utilizando o melhor modelo da RandomizedSearchCV para validação cruzada
+cv_scores_f1 = cross_val_score(
+    best_rf_model, X_train_scaled, y_train, cv=5, scoring='f1')
+cv_scores_auc = cross_val_score(
+    best_rf_model, X_train_scaled, y_train, cv=5, scoring='roc_auc')
+
+print(f'F1-score médio na validação cruzada: {cv_scores_f1.mean()}')
+print(f'AUC-ROC médio na validação cruzada: {cv_scores_auc.mean()}')
